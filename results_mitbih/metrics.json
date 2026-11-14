@@ -1,0 +1,59 @@
+{
+  "dataset": "mitbih",
+  "seed": 0,
+  "best_val_macro_f1": 0.47983458152953,
+  "test": {
+    "Random forest (features)": {
+      "macro_f1": 0.4808937215384919,
+      "accuracy": 0.8991339269415655,
+      "per_class_recall": {
+        "N (normal)": 0.9674772860823577,
+        "S (supraventricular)": 0.002177463255307567,
+        "V (ventricular)": 0.4717391304347826
+      },
+      "confusion_matrix": [
+        [
+          42807,
+          22,
+          1417
+        ],
+        [
+          1826,
+          4,
+          7
+        ],
+        [
+          1668,
+          33,
+          1519
+        ]
+      ]
+    },
+    "1D CNN": {
+      "macro_f1": 0.5332157092990081,
+      "accuracy": 0.6997951443117052,
+      "per_class_recall": {
+        "N (normal)": 0.7067757537404511,
+        "S (supraventricular)": 0.1883505715841045,
+        "V (ventricular)": 0.8956521739130435
+      },
+      "confusion_matrix": [
+        [
+          31272,
+          11307,
+          1667
+        ],
+        [
+          1452,
+          346,
+          39
+        ],
+        [
+          222,
+          114,
+          2884
+        ]
+      ]
+    }
+  }
+}

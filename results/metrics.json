@@ -1,0 +1,59 @@
+{
+  "dataset": "synthetic",
+  "seed": 0,
+  "best_val_macro_f1": 1.0,
+  "test": {
+    "Random forest (features)": {
+      "macro_f1": 0.9114505071844615,
+      "accuracy": 0.946875,
+      "per_class_recall": {
+        "N (normal)": 0.9473684210526315,
+        "S (supraventricular)": 0.8867924528301887,
+        "V (ventricular)": 1.0
+      },
+      "confusion_matrix": [
+        [
+          2412,
+          134,
+          0
+        ],
+        [
+          36,
+          282,
+          0
+        ],
+        [
+          0,
+          0,
+          336
+        ]
+      ]
+    },
+    "1D CNN": {
+      "macro_f1": 0.9976417152898204,
+      "accuracy": 0.99875,
+      "per_class_recall": {
+        "N (normal)": 0.9992144540455616,
+        "S (supraventricular)": 0.9937106918238994,
+        "V (ventricular)": 1.0
+      },
+      "confusion_matrix": [
+        [
+          2544,
+          2,
+          0
+        ],
+        [
+          2,
+          316,
+          0
+        ],
+        [
+          0,
+          0,
+          336
+        ]
+      ]
+    }
+  }
+}

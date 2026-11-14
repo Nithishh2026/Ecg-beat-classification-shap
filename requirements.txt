@@ -1,0 +1,8 @@
+torch>=2.2          # tested with 2.15.0
+shap>=0.45           # tested with 0.54.1
+scikit-learn>=1.3    # tested with 1.9.1
+scipy>=1.11
+numpy>=1.26
+matplotlib>=3.8
+wfdb>=4.1            # only needed for --data mitbih
+joblib>=1.3
