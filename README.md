@@ -1,79 +1,80 @@
-# Explainable ECG beat classification (PyTorch + SHAP)
+# ECG beat classification with a CNN, and what SHAP says about it
 
-Classify single heartbeats into **N** (normal), **S** (supraventricular ectopic) and
-**V** (ventricular ectopic), compare a 1D CNN with a feature-based random forest, and
-use SHAP to check *where in the beat* each model looks.
+This project classifies single heartbeats into three classes: N (normal), S (supraventricular ectopic) and V (ventricular ectopic). I train a small 1D CNN and a random forest on handcrafted features, then use SHAP to see which part of the beat each model actually looks at. The question I care about is whether the models focus on the parts of the waveform a cardiologist would.
 
-## Quick start
+## Running it
 
 ```bash
 pip install -r requirements.txt
 
-# 1) Pipeline smoke test (no download, synthetic beats)
+# quick check that everything runs (synthetic beats, nothing to download)
 python train.py --data synthetic
 python explain.py --out results
 
-# 2) Real run on MIT-BIH (downloads ~100 MB from PhysioNet on first use)
+# the real thing on MIT-BIH (about 100 MB from PhysioNet the first time)
 python train.py --data mitbih --out results_mitbih
 python explain.py --out results_mitbih
 ```
 
-## What is in the repo
+## Files
 
-| File | Purpose |
-|---|---|
-| `data.py` | MIT-BIH loader (wfdb), synthetic beat generator, band-pass + per-beat normalisation, handcrafted features, **subject-wise splits** |
-| `model.py` | Small 1D CNN (3 conv blocks, BatchNorm, `ReLU(inplace=False)`, flatten head) |
-| `train.py` | Random forest baseline + CNN with weighted loss; best epoch chosen on validation macro-F1; writes metrics and confusion matrices |
-| `explain.py` | GradientExplainer (CNN), TreeSHAP (baseline), region-attribution table, deletion test |
+- `data.py`: loads MIT-BIH through wfdb, generates synthetic beats, does the band-pass filter and per-beat normalisation, computes the handcrafted features, and makes the patient-wise splits.
+- `model.py`: the 1D CNN. Three conv blocks with BatchNorm, `ReLU(inplace=False)` (SHAP's gradient hooks complain otherwise), then a flatten head.
+- `train.py`: trains the random forest baseline and the CNN. The CNN uses a weighted loss and I keep the epoch with the best validation macro-F1. Writes metrics and confusion matrices.
+- `explain.py`: GradientExplainer for the CNN, TreeSHAP for the forest, a table of attribution per beat region, and a deletion test.
 
-## Design decisions
+## Choices worth explaining
 
-- **Split by patient, never by beat.** Beats from one patient are highly similar; a random split leaks. MIT-BIH uses the fixed DS1/DS2 inter-patient protocol (train/val from DS1, test = DS2); `data.py` asserts no patient appears in two sets.
-- **Class imbalance:** inverse-frequency loss weights for the CNN, `class_weight="balanced"` for the forest. Report **macro-F1 and per-class recall**, not accuracy.
-- **Model selection on validation only.** The test set is touched once, at the end.
-- **SHAP background:** class-balanced sample of training beats, so rare classes are represented in the reference distribution.
+**Splitting by patient.** Beats from the same person look very alike, so a random beat-level split leaks information and gives inflated scores. For MIT-BIH I use the usual DS1/DS2 inter-patient split: train and validation come from DS1, and the test set is DS2. `data.py` has an assert that no patient shows up in two sets.
 
-## How SHAP is checked, not just plotted
+**Class imbalance.** N dominates by a lot. The CNN gets inverse-frequency loss weights and the forest uses `class_weight="balanced"`. Because accuracy is meaningless here, I report macro-F1 and per-class recall.
 
-1. `shap_class_profiles.png`: mean beat with mean |SHAP| overlaid, per class.
-2. `shap_examples.png`: per-sample SHAP on the waveform for correct and misclassified beats.
-3. `shap_rf_features.png`: TreeSHAP on the baseline, to compare what the two models rely on.
-4. **Region attribution** (`explain_metrics.json`): share of |SHAP| on P/PR, QRS and ST/T per class, plus the share on the first/last 5 samples (high values suggest an edge artifact).
-5. **Deletion test:** masking the top-k SHAP samples should reduce the predicted-class probability far more than masking k random samples.
+**Model selection.** Everything is picked on the validation set. The test set is only used once, at the very end.
+
+**SHAP background.** I draw a class-balanced sample of training beats as the background, otherwise the rare classes would barely be represented.
+
+## Checking the SHAP results instead of just trusting the plots
+
+Pretty SHAP plots are easy to over-read, so I added a few sanity checks:
+
+1. `shap_class_profiles.png` shows the mean beat per class with the mean |SHAP| drawn over it.
+2. `shap_examples.png` shows per-sample attributions on the waveform, for both correct and misclassified beats.
+3. `shap_rf_features.png` is TreeSHAP on the random forest, so I can compare what the two models rely on.
+4. The region attribution in `explain_metrics.json` gives the share of |SHAP| that falls on P/PR, QRS and ST/T for each class. It also reports the share on the first and last 5 samples, since a high value there usually means an edge artifact.
+5. The deletion test masks the top-k SHAP samples and checks that the predicted-class probability drops much more than when k random samples are masked.
 
 ## Results
 
-### Synthetic smoke test (pipeline check only, NOT a scientific result)
+### Synthetic data (just a pipeline check)
 
-The synthetic generator has clean, known morphology (S = absent/weak P wave, V = wide QRS and inverted T), so it is easy. It exists to prove the code runs and to give SHAP a ground truth to be compared against.
+The synthetic beats have clean, known shapes (S has a missing or weak P wave, V has a wide QRS and an inverted T), so the task is easy and these numbers say nothing scientific. The point is to confirm the code works and to have a case where I know what SHAP should find.
 
 | Model | Macro-F1 | Recall N / S / V |
 |---|---|---|
 | Random forest (features) | 0.894 | 0.919 / 0.943 / 1.000 |
 | 1D CNN | 0.998 | 0.999 / 0.994 / 1.000 |
 
-SHAP on synthetic data: N and S attributions concentrate on the P/PR region (62% and 58%), V on the QRS (49%); deletion test drop 0.140 (top-SHAP) vs 0.001 (random).
+SHAP behaves sensibly here. For N and S most of the attribution sits on the P/PR region (62% and 58%) and for V it sits on the QRS (49%). In the deletion test, masking the top SHAP samples lowers the probability by 0.140, against 0.001 for random masking.
 
-### MIT-BIH (fill in after your run)
+### MIT-BIH (to be filled in after my run)
 
 | Model | Macro-F1 | Recall N / S / V |
 |---|---|---|
-| Random forest (features) | _TBD_ | _TBD_ |
-| 1D CNN | _TBD_ | _TBD_ |
+| Random forest (features) | TBD | TBD |
+| 1D CNN | TBD | TBD |
 
-Add 2-3 sentences: which class is hardest (usually S), what SHAP shows for it, and whether that matches physiology (S beats: abnormal P wave / timing; V beats: wide QRS, discordant T).
+Still to write: which class is hardest (I expect S), what SHAP shows for it, and whether that fits the physiology. S beats should show an abnormal P wave or odd timing, and V beats a wide QRS with a discordant T wave.
 
 ## Limitations
 
-- MIT-BIH has only 47 patients and one lead (MLII); results may not transfer to other devices or populations.
-- Beat-level classification ignores rhythm context (RR intervals), which matters clinically for S beats.
-- SHAP attributions describe the model, not physiology or causality; masked inputs in the deletion test are out of distribution.
-- Region boundaries are approximate fixed sample ranges, not per-beat delineation.
+- MIT-BIH only has 47 patients and a single lead (MLII), so the results may not carry over to other devices or populations.
+- The classifier looks at one beat at a time and ignores rhythm context such as RR intervals, which matters clinically, especially for S beats.
+- SHAP explains the model, not the physiology, and it says nothing about causality. The masked inputs in the deletion test are also out of distribution.
+- The P/PR, QRS and ST/T regions are fixed sample ranges, not a per-beat delineation, so they are only approximate.
 
-## Ideas to extend
+## Possible next steps
 
-- Add RR-interval features (previous/next beat spacing) to both models.
-- Compare 5 random seeds and report mean ± std.
-- Try WESAD (stress, EDA/ECG) with the same pipeline: swap the loader, keep the rest.
-- Add a notebook that walks through one beat from raw signal to explanation.
+- Add RR-interval features (spacing to the previous and next beat) to both models.
+- Run 5 random seeds and report mean and standard deviation.
+- Try WESAD (stress, EDA/ECG) by swapping the loader and keeping the rest of the pipeline.
+- Write a notebook that follows one beat from the raw signal to its explanation.
