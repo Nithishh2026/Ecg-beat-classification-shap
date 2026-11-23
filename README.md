@@ -27,7 +27,7 @@ python explain.py --out results_mitbih
 | `train.py` | Random forest baseline + CNN with weighted loss; best epoch chosen on validation macro-F1; writes metrics and confusion matrices |
 | `explain.py` | GradientExplainer (CNN), TreeSHAP (baseline), region-attribution table, deletion test |
 
-## Design decisions (say these in your write-up)
+## Design decisions
 
 - **Split by patient, never by beat.** Beats from one patient are highly similar; a random split leaks. MIT-BIH uses the fixed DS1/DS2 inter-patient protocol (train/val from DS1, test = DS2); `data.py` asserts no patient appears in two sets.
 - **Class imbalance:** inverse-frequency loss weights for the CNN, `class_weight="balanced"` for the forest. Report **macro-F1 and per-class recall**, not accuracy.
@@ -64,14 +64,14 @@ SHAP on synthetic data: N and S attributions concentrate on the P/PR region (62%
 
 Add 2-3 sentences: which class is hardest (usually S), what SHAP shows for it, and whether that matches physiology (S beats: abnormal P wave / timing; V beats: wide QRS, discordant T).
 
-## Limitations (keep an honest version of this)
+## Limitations
 
 - MIT-BIH has only 47 patients and one lead (MLII); results may not transfer to other devices or populations.
 - Beat-level classification ignores rhythm context (RR intervals), which matters clinically for S beats.
 - SHAP attributions describe the model, not physiology or causality; masked inputs in the deletion test are out of distribution.
 - Region boundaries are approximate fixed sample ranges, not per-beat delineation.
 
-## Ideas to extend (pick one or two)
+## Ideas to extend
 
 - Add RR-interval features (previous/next beat spacing) to both models.
 - Compare 5 random seeds and report mean ± std.
